@@ -39,6 +39,9 @@
 			/* Allow only leaves to be checked */
 			onlyLeaves: false,
 
+			/* Mark initially checked checkboxes */
+			markInitially: true,
+
 			// Debug (currently does nothing)
 			debug: false
 		}, settings);
@@ -218,6 +221,15 @@
 				}
 			)
 		;
+
+		if (settings.markInitially) {
+			var $selectedCheckboxes = $lis.find(":checkbox:checked");
+			$selectedCheckboxes.each(function () {
+				var $this = jQuery(this);
+				$this.siblings('.checkbox:first').addClass('checked');
+				$this.parents('ul:first').siblings(':checkbox:first').trigger('refresh');
+			});
+		}
 
 		/*
 		Extra convenience methods
