@@ -33,6 +33,12 @@
 			/* Valid choices: 'expand', 'check' */
 			labelAction: "expand",
 
+			/* Allow only one element to be checked */
+			onlySingleSelection: false,
+
+			/* Allow only leaves to be checked */
+			onlyLeaves: false,
+
 			// Debug (currently does nothing)
 			debug: false
 		}, settings);
@@ -46,7 +52,13 @@
 
 		$lis.not(':has(.arrow)').each(function () {
 			// This little piece here is by far the slowest.
-			jQuery(this).prepend('<div class="arrow"></div><div class="checkbox"></div>');
+			$this = jQuery(this);
+			if (settings.onlyLeaves && $this.find('li').length > 0) {
+				// Ommit the checkbox for entries with sub-lists
+				$this.prepend('<div class="arrow"></div>');
+				return;
+			}
+			$this.prepend('<div class="arrow"></div><div class="checkbox"></div>');
 		});
 
 		/*
@@ -90,18 +102,36 @@
 		What to do when the checkbox is clicked
 		*/
 		$tree.find('.checkbox').click(function () {
-			var $this = jQuery(this);
-			$this
-				.toggleClass('checked')
-				.removeClass('half_checked')
-				.siblings(':checkbox:first').prop('checked', $this.hasClass('checked'))
+			var $this = jQuery(this), isChecked = !$this.hasClass('checked');
+
+			if (settings.onlySingleSelection) {
+				// Uncheck everything
+				$tree.clear();
+			}
+
+			$this.removeClass('half_checked')
+				.siblings(':checkbox:first').prop('checked', isChecked)
 			;
 
-			$this.filter('.checked').siblings('ul:first').find('.checkbox:not(.checked)')
-				.removeClass('half_checked')
-				.addClass('checked')
-				.siblings(':checkbox').prop('checked', true)
-			;
+			if (settings.onlySingleSelection) {
+				if (isChecked) {
+					$this.addClass('checked');
+				} else {
+					$this.removeClass('checked');
+				}
+			} else {
+				$this.toggleClass('checked');
+			}
+
+			if (!settings.onlySingleSelection) {
+				// Do not check sub-lists
+				$this.filter('.checked').siblings('ul:first').find('.checkbox:not(.checked)')
+					.removeClass('half_checked')
+					.addClass('checked')
+					.siblings(':checkbox').prop('checked', true)
+				;
+			}
+
 			$this.filter(':not(.checked)').siblings('ul:first').find('.checkbox.checked')
 				.removeClass('checked half_checked')
 				.siblings(':checkbox').prop('checked', false)
@@ -128,10 +158,11 @@
 			var $this = jQuery(this);
 			var $checkbox = $this.siblings('.checkbox:first');
 			var any_checked = $this.siblings('ul:first').find(':checkbox:checked:first').length == 1;
-			var any_unchecked = $this.siblings('ul:first').find(':checkbox:not(:checked):first').length == 1;
+			var any_unchecked = settings.onlySingleSelection ? true : $this.siblings('ul:first').find(':checkbox:not(:checked):first').length == 1;
 
 			if (any_checked) {
-				$this.prop('checked', true);
+				// Do not check parents for only single or leave selection
+				$this.prop('checked', !(settings.onlySingleSelection || settings.onlyLeaves));
 				if (any_unchecked) {
 					$checkbox
 						.addClass('half_checked')
@@ -193,6 +224,7 @@
 		*/
 		$tree.clear = function () {
 			$tree.find('.checkbox')
+				.removeClass('half_checked')
 				.removeClass('checked')
 				.siblings(':checkbox').prop('checked', false)
 			;
